@@ -9,6 +9,7 @@ import json
 import random
 import os
 import uuid
+import cmd
 
 class QuantumCoin:
     
@@ -45,18 +46,24 @@ class QuantumCoin:
                 self.cmds[data['cmd']](data, obj, conn) 
     def send_checkin(self):
         nodes = self.db.find("nodes", "all")
+        addr = landerdb.Connect("wallet.db")
+        addr_ = addr.find("data", "all")[0]
+        addr = ""
+        for x in addr_:
+            addr = x
         for x in nodes:
             s = socket.socket()
             ip = None
             port = None
             for y in x:
                 ip = y
-                port = x[y]
+                port = 5554
+                break
             try:
                 s.settimeout(1)
-                s.connect((ip, port))
-                s.send(json.dumps({"cmd":"checkin"}))
-            except:
+                s.connect((ip, int(port)))
+                s.send(json.dumps({"cmd":"checkin", "addr":addr}))
+            except Exception, error:
                 s.close()
                 continue
             s.close()
@@ -65,6 +72,13 @@ class QuantumCoin:
         sock = socket.socket()
         sock.connect(self.broker)
         with open("nodes.db", 'wb') as file:
+            db = landerdb.Connect("wallet.db")
+            addr = db.find("data", "all")[0]
+            for x in addr:
+                addr = x
+                break
+            data = {"addr":addr}
+            sock.send(json.dumps(data))
             while True:
                 get = sock.recv(1024)
                 if get:
@@ -74,11 +88,26 @@ class QuantumCoin:
         sock.close()
         print "Downloaded Nodes"
 
+
+class Shell(cmd.Cmd):
+
+    prompt = "QuantumShell$ "
+
+    def do_transactions(self, line):
+        db = landerdb.Connect("transactions.db")
+        print db.find("transactions", "all")
+    
+    def do_send(self):
+        pass
+
 if __name__ == "__main__":
     if not os.path.exists("wallet.db"):
         db = landerdb.Connect("wallet.db")
         coins = landerdb.Connect("coins.db")
+        transactions = landerdb.Connect("transactions.db")
+        transactions.insert("transactions", {})
         db.insert("data", {uuid.uuid4().hex:uuid.uuid4().hex})
         coins.insert("coins", {})
+    #threading.Thread(target=Shell().cmdloop).start()
     QuantumCoin().main()
 

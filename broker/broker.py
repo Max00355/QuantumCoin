@@ -17,11 +17,15 @@ class QuantumBroker:
             obj, conn = self.sock.accept()
             threading.Thread(target=self.handle, args=(obj,conn)).start()
     def handle(self, obj, conn):
-        print conn
-        self.db.insert("nodes", {conn[0]: self.node_p})
-        with open("nodes.db", 'rb') as file:
-            for x in file.readlines():
-                obj.send(x)
-        obj.close()
+        data = obj.recv(1024)
+        print data
+        if data:
+            data = json.loads(data)
+            addr = data['addr']
+            self.db.insert("nodes", {conn[0]: self.node_p, "addr":addr})
+            with open("nodes.db", 'rb') as file:
+                for x in file.readlines():
+                    obj.send(x)
+            obj.close()
 if __name__ == "__main__":
     QuantumBroker().main()
